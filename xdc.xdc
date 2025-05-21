@@ -1,5 +1,7 @@
 ##=======================================================================
 ## Basys3-revB constraints for simon_game_top.v
+## Using DIP switches (SW[3:0]) as the player inputs
+## and LEDs (LD0–LD3) to display the Simon sequence
 ##=======================================================================
 
 ## Clock
@@ -9,19 +11,19 @@ create_clock -add -name sys_clk_pin -period 10.00 -waveform {0 5} [get_ports {cl
 ## Reset (active-high)
 set_property -dict { PACKAGE_PIN U18  IOSTANDARD LVCMOS33 } [get_ports {reset}]
 
-## Buttons (one-hot for Simon inputs)
-set_property -dict { PACKAGE_PIN T18  IOSTANDARD LVCMOS33 } [get_ports {btn[0]}]  ;# BTNU
-set_property -dict { PACKAGE_PIN W19  IOSTANDARD LVCMOS33 } [get_ports {btn[1]}]  ;# BTNL
-set_property -dict { PACKAGE_PIN T17  IOSTANDARD LVCMOS33 } [get_ports {btn[2]}]  ;# BTNR
-set_property -dict { PACKAGE_PIN U17  IOSTANDARD LVCMOS33 } [get_ports {btn[3]}]  ;# BTND
+## Player inputs via switches (one-hot, SW0→input[0], SW1→input[1], etc.)
+set_property -dict { PACKAGE_PIN V17  IOSTANDARD LVCMOS33 } [get_ports {btn[0]}]  ;# SW0
+set_property -dict { PACKAGE_PIN V16  IOSTANDARD LVCMOS33 } [get_ports {btn[1]}]  ;# SW1
+set_property -dict { PACKAGE_PIN W16  IOSTANDARD LVCMOS33 } [get_ports {btn[2]}]  ;# SW2
+set_property -dict { PACKAGE_PIN W17  IOSTANDARD LVCMOS33 } [get_ports {btn[3]}]  ;# SW3
 
-## LEDs for sequence feedback
+## Sequence display LEDs (led[0] lights LD0, etc.)
 set_property -dict { PACKAGE_PIN U16  IOSTANDARD LVCMOS33 } [get_ports {led[0]}]  ;# LD0
 set_property -dict { PACKAGE_PIN E19  IOSTANDARD LVCMOS33 } [get_ports {led[1]}]  ;# LD1
 set_property -dict { PACKAGE_PIN U19  IOSTANDARD LVCMOS33 } [get_ports {led[2]}]  ;# LD2
 set_property -dict { PACKAGE_PIN V19  IOSTANDARD LVCMOS33 } [get_ports {led[3]}]  ;# LD3
 
-## LED for error indicator
+## Error indicator LED
 set_property -dict { PACKAGE_PIN W18  IOSTANDARD LVCMOS33 } [get_ports {error_led}] ;# LD4
 
 ##— leave everything else commented unless you add more I/Os —
