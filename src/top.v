@@ -21,6 +21,7 @@ module top(
     wire [3:0] wr_addr, rd_addr;
     wire [1:0] wr_data;
     wire       lfsr_en;
+    wire [2:0] fsm_state;   // debug: current FSM state
     wire       seq_ready;
 
     // 1) slow clock
@@ -76,6 +77,14 @@ module top(
       .btn_val    (btn_val),
       .rd_addr    (rd_addr),      // <— read-address out of your FSM
       .led        (led),
-      .error_led  (error_led)
+      .error_led  (error_led),
+      .state(fsm_state) 
+    );
+
+    // 6) Debug display
+    debug_display dbg (
+      .hex ( {1'b0, fsm_state} ),  // pad to 4 bits
+      .seg ( seg     ),
+      .an  ( an      )
     );
 endmodule
