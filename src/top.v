@@ -21,7 +21,7 @@ module top(
     wire [3:0] wr_addr, rd_addr;
     wire [1:0] wr_data;
     wire       lfsr_en;
-    wire [2:0] fsm_state;   // debug: current FSM state
+    wire       seq_ready;
 
     // 1) slow clock
     clock_divider clkdiv (
@@ -36,7 +36,20 @@ module top(
       .q(lfsr_val)
     );
 
-    // 3) Sequence ROM
+
+    // 3) Sequence loader (new)
+    sequence_loader #(.N(10)) loader (
+      .clk    (slow_clk),
+      .reset       (reset),
+      .lfsr_val    (lfsr_val),
+      .write_en    (write_en),
+      .wr_addr     (wr_addr),
+      .wr_data     (wr_data),
+      .lfsr_enable (lfsr_en),
+      .done        (seq_ready)
+    );
+
+    // 4) Sequence ROM
     sequence_rom #(.DEPTH(10)) rom (
       .clk(slow_clk),
       .write_en(write_en),
@@ -46,35 +59,23 @@ module top(
       .rd_data(seq_val)
     );
 
-    // 4) Button decoder
+    // 5) Button decoder
     button_decoder dec (
       .btn(btn),
       .valid(btn_valid),
       .val(btn_val)
     );
 
-    // 5) FSM
-    simon_fsm fsm (
-      .clk_tick(slow_clk),
-      .reset(reset),
-      .lfsr_val(lfsr_val),
-      .seq_val(seq_val),
-      .btn_valid(btn_valid),
-      .btn_val(btn_val),
-      .write_en(write_en),
-      .wr_addr(wr_addr),
-      .wr_data(wr_data),
-      .rd_addr(rd_addr),
-      .lfsr_enable(lfsr_en),
-      .led(led),
-      .error_led(error_led),
-      .state(fsm_state) 
-    );
-
-    // 6) Debug display
-    debug_display dbg (
-      .hex ( {1'b0, fsm_state} ),  // pad to 4 bits
-      .seg ( seg     ),
-      .an  ( an      )
+    // 6) FSM (now expects seq_ready instead of doing INIT itself)
+    simon_fsm #(.N(10)) fsm (
+      .clk   (slow_clk),
+      .reset      (reset),
+      .start_play (seq_ready),    // <— wait here until loader is done
+      .seq_val    (seq_val),
+      .btn_valid  (btn_valid),
+      .btn_val    (btn_val),
+      .rd_addr    (rd_addr),      // <— read-address out of your FSM
+      .led        (led),
+      .error_led  (error_led)
     );
 endmodule
