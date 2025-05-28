@@ -1,4 +1,7 @@
-// top.v (with switch edge-detect)
+// top.v
+// ----------------
+// Simon game top with switch edge‐detect and debug_display.
+
 `timescale 1ns/1ps
 module top(
     input  wire       clk,        // 100 MHz
@@ -22,10 +25,19 @@ module top(
   wire [3:0]  init_cnt;
 
   // 1) slow clock ~1 Hz
-  clock_divider clkdiv   (.clk(clk), .reset(reset), .slow_clk(slow_clk));
+  clock_divider clkdiv (
+    .clk      (clk),
+    .reset    (reset),
+    .slow_clk (slow_clk)
+  );
 
   // 2) LFSR
-  lfsr2        rng      (.clk(slow_clk), .reset(reset), .enable(lfsr_en), .q(lfsr_val));
+  lfsr2 rng (
+    .clk    (slow_clk),
+    .reset  (reset),
+    .enable (lfsr_en),
+    .q      (lfsr_val)
+  );
 
   // 3) 4-entry sequence ROM
   sequence_rom #(.DEPTH(4)) rom (
@@ -47,9 +59,9 @@ module top(
       sw1     <= 4'd0;
       sw_prev <= 4'd0;
     end else begin
-      sw0     <= btn;   // sample
-      sw1     <= sw0;   // synchronize
-      sw_prev <= sw1;   // keep last cycle
+      sw0     <= btn;    // sample
+      sw1     <= sw0;    // synchronize
+      sw_prev <= sw1;    // keep last cycle
     end
   end
 
@@ -80,9 +92,10 @@ module top(
   );
 
   // 6) debug_display: show INIT count 0–4, then FSM state 1–4
-  wire [3:0] debug_nibble = (fsm_state == 3’d0)
+  wire [3:0] debug_nibble = (fsm_state == 3'd0)
                             ? init_cnt
-                            : {1’b0, fsm_state};
+                            : {1'b0, fsm_state};
+
   debug_display dbg (
     .hex(debug_nibble),
     .seg(seg),
