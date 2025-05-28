@@ -52,23 +52,16 @@ module top(
     .val   (btn_val)
   );
 
-  // main FSM (N=4), exposes state & init_cnt for debug
-  simon_fsm #(.N(4)) fsm (
-    .clk_tick    (slow_clk),
-    .reset       (reset),
-    .lfsr_val    (lfsr_val),
-    .seq_val     (seq_val),
-    .btn_valid   (btn_valid),
-    .btn_val     (btn_val),
-    .write_en    (write_en),
-    .wr_addr     (wr_addr),
-    .wr_data     (wr_data),
-    .rd_addr     (rd_addr),
-    .lfsr_enable (lfsr_en),
-    .led         (led),
-    .error_led   (error_led),
-    .state       (fsm_state),
-    .init_cnt    (init_cnt)
+  // 5) main FSM → use hardcoded variant
+  simon_fsm_hard #(.N(4)) fsm (
+    .clk_tick  (slow_clk),
+    .reset     (reset),
+    .btn_valid (btn_valid),
+    .btn_val   (btn_val),
+    .led       (led),
+    .error_led (error_led),
+    .state     (fsm_state),
+    .init_cnt  (init_cnt)
   );
 
   // debug: show INIT count 0–4, then FSM state 1–4
