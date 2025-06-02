@@ -2,7 +2,7 @@
 module top(
     input  wire       clk,        // 100 MHz
     input  wire       reset,      // active-high
-    input  wire [3:0] btn,        // one-hot from push-buttons
+    input  wire [3:0] sw,        // one-hot from push-buttons
     output wire [3:0] led,        // LD0–LD3
     output wire       error_led,  // LD4
     output wire [6:0] seg,        // 7-seg a–g (active-LOW)
@@ -14,7 +14,8 @@ module top(
   wire [1:0]  lfsr_val, seq_val;
   wire        btn_valid;
   wire [1:0]  btn_val;
-  wire        write_en, lfsr_en;
+  wire        write_en;
+  wire        lfsr_en = 1'b1;
   wire [3:0]  wr_addr, rd_addr;
   wire [1:0]  wr_data;
   wire [2:0]  fsm_state;
@@ -28,29 +29,54 @@ module top(
   );
 
   // pseudo-random 2-bit LFSR
-  lfsr2 rng (
-    .clk    (slow_clk),
-    .reset  (reset),
-    .enable (lfsr_en),
-    .q      (lfsr_val)
-  );
+  // lfsr2 rng (
+  //   .clk    (slow_clk),
+  //   .reset  (reset),
+  //   .enable (lfsr_en),
+  //   .q      (lfsr_val)
+  // );
 
   // 4-entry sequence ROM
   sequence_rom #(.DEPTH(4)) rom (
     .clk      (slow_clk),
-    .write_en (1'b0),           // ROM is read-only in hardcoded mode
-    .wr_addr  (4'b0),           // Tie off unused write address
-    .wr_data  (2'b0),           // Tie off unused write data
+    // .write_en (1'b0),           // ROM is read-only in hardcoded mode
+    // .wr_addr  (4'b0),           // Tie off unused write address
+    // .wr_data  (2'b0),           // Tie off unused write data
     .rd_addr  (4'b0),           // Tie off read address since we're not using ROM
     .rd_data  (seq_val)         // This will be unused but properly connected
   );
 
-  // --- Directly decode the push-button levels ---
-  button_decoder dec (
-    .btn   (btn),
-    .valid (btn_valid),
-    .val   (btn_val)
-  );
+
+  // --- Switch synchroniser + 1-shot pulse generator ---
+  reg  [3:0] sw_ff  = 4'b0;       // sync
+  reg  [3:0] sw_ff2 = 4'b0;       // for edge detect
+  wire [3:0] sw_rise =  sw_ff & ~sw_ff2;   // 1 on rising edge
+
+  always @(posedge slow_clk or posedge reset) begin
+      if (reset) begin
+          sw_ff  <= 4'b0;
+          sw_ff2 <= 4'b0;
+      end else begin
+          sw_ff  <= sw;       // two-stage synchroniser
+          sw_ff2 <= sw_ff;
+      end
+  end
+
+  // Priority encoder: lowest-numbered switch wins
+  reg       btn_valid_r;
+  reg [1:0] btn_val_r;
+  always @(*) begin
+      casex (sw_rise)
+          4'b0001: begin btn_valid_r = 1'b1; btn_val_r = 2'd0; end
+          4'b0010: begin btn_valid_r = 1'b1; btn_val_r = 2'd1; end
+          4'b0100: begin btn_valid_r = 1'b1; btn_val_r = 2'd2; end
+          4'b1000: begin btn_valid_r = 1'b1; btn_val_r = 2'd3; end
+          default: begin btn_valid_r = 1'b0; btn_val_r = 2'd0; end
+      endcase
+  end
+
+  assign btn_valid = btn_valid_r;
+  assign btn_val   = btn_val_r;
 
   // 5) main FSM → use hardcoded variant
   simon_fsm_hard #(.N(4)) fsm (
