@@ -1,3 +1,4 @@
+`timescale 1ns / 1ps
 // simon_fsm.v
 // ——————————————————————————————————————————————————
 // Now only handles PLAY → WAIT → CHECK → ERROR.
@@ -26,7 +27,7 @@ module simon_fsm #(
   // outputs to LEDs
   output reg  [3:0]  led,
   output reg         error_led,
-  output reg [3:0]   rd_addr
+  output reg [3:0]   rd_addr // this is the address of the ROM
 );
   // FSM states
   localparam [2:0]
@@ -39,10 +40,10 @@ module simon_fsm #(
   reg [2:0] state;
   reg [3:0] play_idx, input_idx, round_cnt;
   reg [1:0] latched_btn;
-  reg [3:0] rd_addr;  // feed this to your sequence_rom rd_addr port
 
   always @(posedge clk_tick or posedge reset) begin
     if (reset) begin
+      $display("[FSM DEBUG] @ T=%0t: In RESET block. State -> S_INIT.", $time);
       state      <= S_INIT;
       play_idx   <= 4'd0;
       input_idx  <= 4'd0;
@@ -51,15 +52,20 @@ module simon_fsm #(
       error_led  <= 1'b0;
       rd_addr    <= 4'd0;
     end else begin
+      // This will print at every clock tick when not in reset
+      $display("[FSM DEBUG] @ T=%0t: TICK! Current state=%d, start_play_input=%b, round_cnt=%d", $time, state, start_play, round_cnt);
       // defaults: turn off LEDs unless a state drives them
       led <= 4'd0;
 
       case (state)
       S_INIT: begin
+        $display("[FSM DEBUG] @ T=%0t: In S_INIT block. Checking start_play...", $time);
         // wait until sequence_loader tells us the ROM is loaded
         if (start_play) begin
+          $display("[FSM DEBUG] @ T=%0t: S_INIT sees start_play=1! New state->S_PLAY, new round_cnt->1.", $time);
           round_cnt <= 4'd1;  
           play_idx  <= 4'd0;
+          rd_addr   <= 4'd0;
           state     <= S_PLAY;
         end
       end
@@ -73,6 +79,7 @@ module simon_fsm #(
         end else begin
           // all steps shown → wait for user input
           input_idx <= 4'd0;
+          rd_addr   <= 4'd0;
           state     <= S_WAIT;
         end
       end
@@ -86,18 +93,20 @@ module simon_fsm #(
       end
 
       S_CHECK: begin
-        // correct? either advance or error
-        if (latched_btn == seq_val) begin
-          input_idx <= input_idx + 1;
-          if (input_idx + 1 == round_cnt) begin
-            // round complete → next round
+        if (latched_btn == seq_val) begin // Correct button for current input_idx
+          if (input_idx == round_cnt - 1) begin // Last input for this round was correct
+            // Round complete → next round
             round_cnt <= round_cnt + 1;
             play_idx  <= 4'd0;
+            // rd_addr will be set by S_PLAY based on new play_idx
             state     <= S_PLAY;
           end else begin
-            state <= S_WAIT;
+            // Correct input, but more inputs needed for this round
+            input_idx <= input_idx + 1; // Advance to next input index
+            rd_addr   <= input_idx + 1; // Point ROM to next value for S_WAIT/S_CHECK
+            state     <= S_WAIT;
           end
-        end else begin
+        end else begin // Incorrect input
           error_led <= 1'b1;
           state     <= S_ERROR;
         end
@@ -109,8 +118,9 @@ module simon_fsm #(
           error_led <= 1'b0;
           round_cnt <= 4'd1;
           play_idx  <= 4'd0;
+          rd_addr   <= 4'd0;
           state     <= S_PLAY;
-        end
+        end 
       end
 
       default: state <= S_INIT;
