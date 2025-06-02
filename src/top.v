@@ -38,11 +38,11 @@ module top(
   // 4-entry sequence ROM
   sequence_rom #(.DEPTH(4)) rom (
     .clk      (slow_clk),
-    .write_en (write_en),
-    .wr_addr  (wr_addr),
-    .wr_data  (wr_data),
-    .rd_addr  (rd_addr),
-    .rd_data  (seq_val)
+    .write_en (1'b0),           // ROM is read-only in hardcoded mode
+    .wr_addr  (4'b0),           // Tie off unused write address
+    .wr_data  (2'b0),           // Tie off unused write data
+    .rd_addr  (4'b0),           // Tie off read address since we're not using ROM
+    .rd_data  (seq_val)         // This will be unused but properly connected
   );
 
   // --- Directly decode the push-button levels ---
