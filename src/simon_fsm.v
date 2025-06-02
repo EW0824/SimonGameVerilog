@@ -1,3 +1,4 @@
+`timescale 1ns / 1ps
 // simon_fsm.v
 `timescale 1ns/1ps
 module simon_fsm #(
