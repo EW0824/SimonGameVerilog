@@ -15,6 +15,7 @@ module simon_fsm_hard #(
     output reg  [2:0]  state,
     output     [3:0]   init_cnt  // will just count 0→4 then stick at 4
 );
+    reg [2:0] hold_cnt;   // 0‑7 => LED‑on time ≈ (hold_cnt+1)/btn_clk
 
     // states
     localparam [2:0]
@@ -62,18 +63,17 @@ module simon_fsm_hard #(
             end
           end
 
-          S_PLAY: begin
-            if (play_idx < round_cnt) begin
-              // Show current LED
-              led <= 4'b0001 << sequence[play_idx];
-              // Move to next position
+          S_PLAY : begin
+            if (hold_cnt != 0) begin
+              hold_cnt <= hold_cnt - 1;          // keep LED on
+            end else if (play_idx < round_cnt) begin
+              led      <= 4'b0001 << sequence[play_idx];
               play_idx <= play_idx + 1;
+              hold_cnt <= 3'd5;                  // ~60 ms at 96 Hz
             end else begin
-              // Sequence complete, move to wait state
-              led <= 4'b0000;
-              input_idx <= 4'd0;
-              play_idx <= 4'd0;
-              state <= S_WAIT;
+              led       <= 4'd0;
+              input_idx <= 0;
+              state     <= S_WAIT;
             end
           end
 
@@ -86,24 +86,26 @@ module simon_fsm_hard #(
             end
           end
 
-          S_CHECK: begin
-            if (btn_val == sequence[input_idx]) begin
-              input_idx <= input_idx + 1;
-              if (input_idx+1 == round_cnt) begin
-                // Round complete, increment round counter
+          S_CHECK : begin
+    if (btn_val == sequence[input_idx]) begin
+        input_idx <= input_idx + 1;
+        if (input_idx + 1 == round_cnt) begin
+            if (round_cnt < N) begin        // NEW bound check
                 round_cnt <= round_cnt + 1;
-                play_idx <= 4'd0;
-                state <= S_PLAY;
-              end else begin
-                // More inputs needed
-                state <= S_WAIT;
-              end
-            end else begin
-              // Wrong input, show error
-              error_led <= 1'b1;
-              state <= S_ERROR;
+                play_idx  <= 0;
+                state     <= S_PLAY;
+            end else begin                  // reached 4, game won
+                state <= S_INIT;            // or make a WIN state
             end
+        end else begin
+            state <= S_WAIT;
+        end
+    end else begin
+        error_led <= 1;
+        state     <= S_ERROR;
+    end
           end
+
 
           S_ERROR: begin
             if (btn_valid) begin

@@ -28,6 +28,13 @@ module top(
     .slow_clk (slow_clk)
   );
 
+  wire btn_clk;   // ≈100 Hz for FSM + debouncer
+  clock_divider #(.WIDTH(20), .BIT(19)) btn_clk_gen (
+    .clk      (clk),    // 100 MHz in
+    .reset    (reset),
+    .slow_clk (btn_clk) // ~96 Hz out
+  );
+
   // pseudo-random 2-bit LFSR
   // lfsr2 rng (
   //   .clk    (slow_clk),
@@ -81,9 +88,39 @@ module top(
   // ------------------------------------------------------------------
   // Push-button synchroniser + 1-shot pulse (valid for 1 slow_clk tick)
   // ------------------------------------------------------------------
-  reg  [3:0] btn_ff  = 4'b0;   // stage-1 sync
-  reg  [3:0] btn_ff2 = 4'b0;   // stage-2 sync
-  wire [3:0] btn_rise =  btn_ff & ~btn_ff2;   // detect 0→1 edge
+  // ----------- NEW button path -----------
+  wire [3:0] clean_btn;      // debounced level, 100 MHz domain
+  genvar k;
+  generate
+    for (k=0; k<4; k=k+1) begin : DEB
+        debounced db (
+            .clk (clk),            // still 100 MHz
+            .rst (reset),
+            .raw (btn[k]),
+            .q   (clean_btn[k])
+        );
+    end
+  endgenerate
+
+// sync into btn_clk domain then edge‑detect
+  reg  [3:0] btn_s1=0, btn_s2=0;  
+  always @(posedge btn_clk or posedge reset) begin
+     if (reset) begin btn_s1<=0; btn_s2<=0; end
+     else       begin btn_s1<=clean_btn; btn_s2<=btn_s1; end
+  end
+  wire [3:0] btn_rise = btn_s1 & ~btn_s2;   // 1‑cycle pulse on btn_clk
+
+  // priority encoder
+  always @(*) begin
+    casex (btn_rise)
+        4'b0001: begin btn_valid_r=1; btn_val_r=2'd0; end
+        4'b0010: begin btn_valid_r=1; btn_val_r=2'd1; end
+        4'b0100: begin btn_valid_r=1; btn_val_r=2'd2; end
+        4'b1000: begin btn_valid_r=1; btn_val_r=2'd3; end
+        default: begin btn_valid_r=0; btn_val_r=2'd0; end
+    endcase
+  end
+
 
   always @(posedge slow_clk or posedge reset) begin
       if (reset) begin
@@ -114,7 +151,7 @@ module top(
 
   // 5) main FSM → use hardcoded variant
   simon_fsm_hard #(.N(4)) fsm (
-    .clk_tick  (slow_clk),
+    .clk_tick  (btn_clk),
     .reset     (reset),
     .btn_valid (btn_valid),
     .btn_val   (btn_val),
