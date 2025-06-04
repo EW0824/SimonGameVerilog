@@ -37,6 +37,10 @@ module simon_fsm_hard #(
     wire [1:0] seq_val = sequence[play_idx];
     assign init_cnt = init_idx;
 
+    // Debug signals
+    wire play_idx_lt_round = (play_idx < round_cnt);
+    wire [3:0] next_play_idx = play_idx + 1;
+
     always @(posedge clk_tick or posedge reset) begin
       if (reset) begin
         state     <= S_INIT;
@@ -60,16 +64,23 @@ module simon_fsm_hard #(
 
           S_PLAY: begin
             if (play_idx < round_cnt) begin
-              led      <= 4'b0001 << sequence[play_idx];
+              // Show current LED
+              led <= 4'b0001 << sequence[play_idx];
+              // Move to next position
               play_idx <= play_idx + 1;
             end else begin
-              led       <= 4'b0000;
+              // Sequence complete, move to wait state
+              led <= 4'b0000;
               input_idx <= 4'd0;
-              state     <= S_WAIT;
+              play_idx <= 4'd0;
+              state <= S_WAIT;
             end
           end
 
           S_WAIT: begin
+            // Keep LED off while waiting
+            led <= 4'b0000;
+            // Check for button press
             if (btn_valid) begin
               state <= S_CHECK;
             end
@@ -79,24 +90,28 @@ module simon_fsm_hard #(
             if (btn_val == sequence[input_idx]) begin
               input_idx <= input_idx + 1;
               if (input_idx+1 == round_cnt) begin
+                // Round complete, increment round counter
                 round_cnt <= round_cnt + 1;
-                play_idx  <= 4'd0;
-                state     <= S_PLAY;
+                play_idx <= 4'd0;
+                state <= S_PLAY;
               end else begin
+                // More inputs needed
                 state <= S_WAIT;
               end
             end else begin
+              // Wrong input, show error
               error_led <= 1'b1;
-              state     <= S_ERROR;
+              state <= S_ERROR;
             end
           end
 
           S_ERROR: begin
             if (btn_valid) begin
+              // Reset on any button press
               error_led <= 1'b0;
               round_cnt <= 4'd1;
-              play_idx  <= 4'd0;
-              state     <= S_PLAY;
+              play_idx <= 4'd0;
+              state <= S_PLAY;
             end
           end
         endcase
