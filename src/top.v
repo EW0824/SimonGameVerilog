@@ -139,7 +139,7 @@ module top(
   
 
   // 5) main FSM → use hardcoded variant
-  simon_fsm_hard #(.N(4)) fsm (
+  simon_fsm_hard #(.N(10)) fsm (
     .clk_tick  (btn_clk),
     .reset     (reset),
     .btn_valid (btn_valid),
