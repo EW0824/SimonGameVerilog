@@ -121,17 +121,6 @@ module top(
     endcase
   end
 
-
-  always @(posedge slow_clk or posedge reset) begin
-      if (reset) begin
-          btn_ff  <= 4'b0;
-          btn_ff2 <= 4'b0;
-      end else begin
-          btn_ff  <= btn;      // two-stage sync into slow_clk domain
-          btn_ff2 <= btn_ff;
-      end
-  end
-
   // Priority encoder: lowest-numbered button wins if two are pressed
   reg       btn_valid_r;
   reg [1:0] btn_val_r;
