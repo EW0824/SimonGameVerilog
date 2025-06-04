@@ -13,7 +13,7 @@
 //   2.  No other logic altered; timing/LED behaviour unchanged.
 // -----------------------------------------------------------------------------
 module simon_fsm_hard #(
-    parameter N        = 4,     // length of hard‑coded sequence
+    parameter N        = 10,    // length of hard‑coded sequence (changed from 4 to 10)
     parameter LED_HOLD = 96     // btn_clk cycles a colour stays lit
 )(
     input  wire        clk_tick,
@@ -40,11 +40,14 @@ module simon_fsm_hard #(
         S_CHECK = 3'd3,
         S_ERROR = 3'd4;
 
-    // hard‑coded pattern: 0 → 1 → 2 → 3
+    // hard‑coded pattern: 2,1,3,1,0,2,3,0,1,3 (10 elements)
     reg [1:0] sequence [0:N-1];
     initial begin
-        sequence[0] = 2'd0; sequence[1] = 2'd1;
-        sequence[2] = 2'd2; sequence[3] = 2'd3;
+        sequence[0] = 2'd2; sequence[1] = 2'd1;
+        sequence[2] = 2'd3; sequence[3] = 2'd1;
+        sequence[4] = 2'd0; sequence[5] = 2'd2;
+        sequence[6] = 2'd3; sequence[7] = 2'd0;
+        sequence[8] = 2'd1; sequence[9] = 2'd3;
     end
 
     // counters & indices
